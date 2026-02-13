@@ -12,7 +12,7 @@
     "fix": "eslint . --ext .ts --fix"
   },
   "dependencies": {
-    "@algorandfoundation/algokit-utils": "^8.0.1",
+    "@algorandfoundation/algokit-utils": "^9.2.0",
     "@algorandfoundation/tealscript": "0.90.4",
     "algosdk": "^3.0.0"
   },

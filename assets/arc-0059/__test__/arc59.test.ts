@@ -72,13 +72,13 @@ async function arc59SendAsset(
   if (!routerOptedIn) group.arc59OptRouterIn({ args: { asa: assetId } });
 
   /** The box of the receiver's pubkey will always be needed */
-  const boxes = [algosdk.decodeAddress(receiver.toString()).publicKey];
+  const resources = { boxReferences: [receiver.publicKey] };
 
   /** The address of the receiver's inbox */
   const inboxAddress = (
     await appClient
       .newGroup()
-      .arc59GetInbox({ args: { receiver: receiver.toString() }, boxReferences: boxes })
+      .arc59GetInbox({ args: { receiver: receiver.toString() }, ...resources })
       .simulate()
   ).returns[0]!;
 
@@ -96,19 +96,12 @@ async function arc59SendAsset(
   group.arc59SendAsset({
     args: { axfer, receiver: receiver.toString(), additionalReceiverFunds: receiverAlgoNeededForClaim },
     extraFee: algokit.microAlgos(1000 * Number(totalItxns)),
-    boxReferences: boxes,
+    ...resources,
     accountReferences: [receiver, inboxAddress],
     assetReferences: [assetId],
   });
 
-  // Disable resource population to ensure that our manually defined resources are correct
-  algokit.Config.configure({ populateAppCallResources: false });
-
-  // Send the transaction group
-  await group.send();
-
-  // Re-enable resource population
-  algokit.Config.configure({ populateAppCallResources: true });
+  await group.send({ populateAppCallResources: false });
 }
 
 /**
@@ -145,11 +138,17 @@ async function arc59Claim(
 
   let totalTxns = 3;
 
+  const resources = {
+    boxReferences: [claimer.publicKey],
+    accountReferences: [inbox],
+    assetReferences: [] as bigint[], // This is left empty for now because it's not needed for claimAlgo
+  };
+
   // If the inbox has extra ALGO, claim it
   const inboxInfo = await algorand.account.getInformation(inbox);
   if (inboxInfo.minBalance < inboxInfo.balance) {
     totalTxns += 2;
-    group.arc59ClaimAlgo({ sender: claimer, args: [], staticFee: (0).algo() });
+    group.arc59ClaimAlgo({ sender: claimer, args: [], staticFee: (0).algo(), ...resources });
   }
 
   // If the claimer hasn't already opted in, add a transaction to do so
@@ -157,9 +156,16 @@ async function arc59Claim(
     group.addTransaction(await algorand.createTransaction.assetOptIn({ assetId, sender: claimer }));
   }
 
-  group.arc59Claim({ args: { asa: assetId }, extraFee: algokit.microAlgos(1000 * (totalTxns - 1)), sender: claimer });
+  resources.assetReferences.push(assetId);
 
-  await group.send();
+  group.arc59Claim({
+    args: { asa: assetId },
+    extraFee: algokit.microAlgos(1000 * (totalTxns - 1)),
+    sender: claimer,
+    ...resources,
+  });
+
+  await group.send({ populateAppCallResources: false });
 }
 
 describe('Arc59', () => {
