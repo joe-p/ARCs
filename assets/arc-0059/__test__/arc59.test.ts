@@ -2,7 +2,7 @@ import { describe, test, expect, beforeAll, beforeEach } from '@jest/globals';
 import { algorandFixture } from '@algorandfoundation/algokit-utils/testing';
 import * as algokit from '@algorandfoundation/algokit-utils';
 import algosdk from 'algosdk';
-import { Arc59Factory, Arc59Client } from '../contracts/clients/Arc59Client';
+import { Arc59Factory, Arc59Client as Arc59GeneratedClient } from '../contracts/clients/Arc59Client';
 
 const fixture = algorandFixture();
 algokit.Config.configure({
@@ -11,14 +11,14 @@ algokit.Config.configure({
   logger: { error: () => console.error, debug: () => {}, warn: console.warn, info: () => {}, verbose: () => {} },
 });
 
-class Arc59ClientWrapper {
-  appClient: Arc59Client;
+class Arc59Client {
+  appClient: Arc59GeneratedClient;
 
   constructor(
     public algorand: algokit.AlgorandClient,
     appId: bigint
   ) {
-    this.appClient = algorand.client.getTypedAppClientById(Arc59Client, {
+    this.appClient = algorand.client.getTypedAppClientById(Arc59GeneratedClient, {
       appId,
     });
   }
@@ -236,13 +236,13 @@ class Arc59ClientWrapper {
   }
 }
 describe('Arc59', () => {
-  let appClient: Arc59Client;
+  let appClient: Arc59GeneratedClient;
   let assetOne: bigint;
   let assetTwo: bigint;
   let alice: algosdk.Account;
   let bob: algosdk.Account;
   let algorand: algokit.AlgorandClient;
-  let wrappedClient: Arc59ClientWrapper;
+  let wrappedClient: Arc59Client;
 
   beforeEach(fixture.beforeEach);
 
@@ -273,7 +273,7 @@ describe('Arc59', () => {
     alice = testAccount;
 
     await appClient.appClient.fundAppAccount({ amount: algokit.microAlgos(100_000), note: 'initial funding' });
-    wrappedClient = new Arc59ClientWrapper(algorand, appClient.appId);
+    wrappedClient = new Arc59Client(algorand, appClient.appId);
   });
 
   test('routerOptIn', async () => {
